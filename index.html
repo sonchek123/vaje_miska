@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="sl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Učna aplikacija: Delo z miško</title>
+  <meta name="description" content="Interaktivne vaje za učenje dela z miško: levi klik, desni klik, dvoklik, povleci in spusti." />
+  <style>
+    :root{
+      --bg:#f6f8fb; --card:#ffffff; --ink:#0f172a; --muted:#475569; --primary:#4f46e5; --ok:#059669; --warn:#e11d48;
+      --border:#e2e8f0; --shadow:0 6px 24px rgba(15,23,42,.08);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial; background:linear-gradient(#fff, var(--bg)); color:var(--ink)}
+    header{position:sticky;top:0;z-index:10;background:rgba(255,255,255,.8);backdrop-filter:blur(6px);border-bottom:1px solid var(--border)}
+    .wrap{max-width:1100px;margin:0 auto;padding:12px 16px}
+    .brand{display:flex;align-items:center;gap:10px}
+    .brand h1{font-size: clamp(18px, 2.4vw, 24px); margin:0}
+    .progress{display:flex;align-items:center;gap:10px;margin-left:auto}
+    .bar{width:120px;height:8px;background:#e5e7eb;border-radius:999px;overflow:hidden}
+    .bar>i{display:block;height:100%;background:var(--primary);transition:width .3s}
+    main{padding:18px 0}
+    .tabs{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+    @media (min-width:700px){.tabs{grid-template-columns:repeat(4,1fr)}}
+    .tab{border:1px solid var(--border);border-radius:14px;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.04);padding:10px 12px;cursor:pointer}
+    .tab.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+    .tab.done{background:#ecfdf5;border-color:#a7f3d0;color:#065f46}
+    .card{margin-top:12px;background:var(--card);border:1px solid var(--border);border-radius:20px;box-shadow:var(--shadow);padding:16px}
+    .controls{display:flex;justify-content:space-between;align-items:center;gap:8px}
+    .btn{border:1px solid var(--border);background:#fff;padding:8px 12px;border-radius:12px;cursor:pointer}
+    .btn:hover{background:#f8fafc}
+    .hint{color:var(--muted);font-size:14px}
+    .ok{color:var(--ok);font-weight:600}
+    kbd{border:1px solid var(--border);border-radius:6px;padding:0 6px}
+    /* Platna za igre */
+    .stage{position:relative;height:280px;border:1px solid var(--border);border-radius:16px;overflow:hidden;background:linear-gradient(#fff,#f1f5f9)}
+    .circle{position:absolute;width:38px;height:38px;border-radius:999px;box-shadow:0 2px 8px rgba(0,0,0,.15);border:1px solid #fff}
+    .tile{height:60px;border:1px solid #cbd5e1;border-radius:12px;background:#3b82f6;box-shadow:0 2px 6px rgba(0,0,0,.07)}
+    .menu{position:absolute;z-index:50;width:180px;background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow);overflow:hidden}
+    .menu button{display:block;width:100%;text-align:left;padding:10px 12px;border:0;background:#fff;cursor:pointer}
+    .menu button:hover{background:#f1f5f9}
+    .bubble{position:absolute;width:46px;height:46px;border-radius:999px;border:1px solid rgba(255,255,255,.6);box-shadow:0 2px 6px rgba(0,0,0,.08)}
+    .draglist{display:flex;flex-wrap:wrap;gap:8px}
+    .chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);background:#fff;border-radius:12px;padding:6px 10px;cursor:grab}
+    .chip.dragging{opacity:.6}
+    .dropzone{min-height:110px;border:2px dashed #cbd5e1;border-radius:14px;padding:10px;background:#f8fafc;display:flex;flex-wrap:wrap;gap:6px;align-items:flex-start}
+    .tag{font-size:13px;border:1px solid var(--border);border-radius:10px;padding:4px 8px;background:#fff}
+    footer{color:var(--muted);font-size:12px;margin-top:10px}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap" style="display:flex;align-items:center;gap:12px">
+      <div class="brand"><span aria-hidden>🖱️</span><h1>Učna aplikacija: Delo z miško</h1></div>
+      <div class="progress" aria-label="napredek">
+        <div class="bar" aria-hidden><i id="bar" style="width:0%"></i></div>
+        <span id="score" class="hint">0/4</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <nav class="tabs" role="tablist" aria-label="Vaje">
+      <button class="tab active" role="tab" aria-selected="true" id="tab-left">1. Levi klik</button>
+      <button class="tab" role="tab" id="tab-right">2. Desni klik</button>
+      <button class="tab" role="tab" id="tab-dbl">3. Dvoklik</button>
+      <button class="tab" role="tab" id="tab-drag">4. Povleci & spusti</button>
+    </nav>
+
+    <section class="card" id="panel-left" role="tabpanel" aria-labelledby="tab-left">
+      <h2>Naloga: Levi klik</h2>
+      <p class="hint">Klikni <strong>rdeče kroge</strong>, da jih zbereš. Zberi 6 rdečih krogov. <span class="hint">Namig: tipka <kbd>R</kbd> ponastavi.</span></p>
+      <div class="controls"><span>Zadetki: <b id="left-hits">0</b> / 6</span><button class="btn" id="left-reset">Ponastavi (R)</button></div>
+      <div class="stage" id="left-stage" aria-label="Polje z rdečimi in sivimi krogi"></div>
+      <p class="ok" id="left-ok" hidden>Odlično! Vsi rdeči krogi so zbrani. ✅</p>
+    </section>
+
+    <section class="card" id="panel-right" role="tabpanel" aria-labelledby="tab-right" hidden>
+      <h2>Naloga: Desni klik</h2>
+      <p class="hint">Z <strong>desnim klikom</strong> odpri mini meni na modrih kvadratih in izberi <em>Pobarvaj</em>. Popravi 4 kvadrate.</p>
+      <div class="controls"><span>Popravljeno: <b id="right-fixed">0</b> / 4</span><button class="btn" id="right-reset">Ponastavi (R)</button></div>
+      <div id="right-grid" class="stage" style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px;padding:12px"></div>
+      <div id="ctx" class="menu" hidden>
+        <button data-act="paint">🎨 Pobarvaj (✓)</button>
+        <button data-act="rotate">↩️ Obrni (90°)</button>
+        <button data-act="remove">🗑️ Izbriši</button>
+      </div>
+      <p class="ok" id="right-ok" hidden>Super! Uporabil/a si desni klik in popravil/a vse kvadrate. ✅</p>
+    </section>
+
+    <section class="card" id="panel-dbl" role="tabpanel" aria-labelledby="tab-dbl" hidden>
+      <h2>Naloga: Dvoklik</h2>
+      <p class="hint">Z <strong>dvoklikom</strong> poči balone. Poči 6 balonov. <span class="hint">Namig: baloni plavajo navzgor.</span></p>
+      <div class="controls"><span>Počenih: <b id="dbl-pop">0</b> / 6</span><button class="btn" id="dbl-reset">Ponastavi (R)</button></div>
+      <div class="stage" id="dbl-stage" aria-label="Polje z baloni"></div>
+      <p class="ok" id="dbl-ok" hidden>Odlično! Vsi baloni so počenI. ✅</p>
+    </section>
+
+    <section class="card" id="panel-drag" role="tabpanel" aria-labelledby="tab-drag" hidden>
+      <h2>Naloga: Povleci & spusti</h2>
+      <p class="hint">Povleci predmete v pravo košaro: <em>Sadje</em>, <em>Zelenjava</em> ali <em>Drugo</em>.</p>
+      <div class="controls"><span>Postavljeno: <b id="drag-count">0</b> / <span id="drag-total">0</span></span><button class="btn" id="drag-reset">Ponastavi (R)</button></div>
+      <div class="card" style="padding:12px;margin-top:12px">
+        <h3>Predmeti</h3>
+        <div id="drag-list" class="draglist" aria-label="Seznam predmetov"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(1,1fr);gap:12px;margin-top:12px" id="drop-grid">
+        <div class="dropzone" data-accept="sadje" aria-label="Košara: Sadje"><strong>🧺 Košara: Sadje</strong><div class="zone-items"></div></div>
+        <div class="dropzone" data-accept="zelenjava" aria-label="Košara: Zelenjava"><strong>🧺 Košara: Zelenjava</strong><div class="zone-items"></div></div>
+        <div class="dropzone" data-accept="drugo" aria-label="Košara: Drugo"><strong>🧺 Košara: Drugo</strong><div class="zone-items"></div></div>
+      </div>
+      <p class="ok" id="drag-ok" hidden>Bravo! Vse predmete si pravilno razvrstil/a. ✅</p>
+    </section>
+
+    <footer>Namig: pritisni <kbd>R</kbd> za ponastavitev trenutno odprte vaje. Napredek se samodejno shrani v brskalnik (lokalno).</footer>
+  </main>
+
+  <script>
+    // —————— SKUPNE FUNKCIJE ——————
+    const $ = (sel, el=document) => el.querySelector(sel);
+    const $$ = (sel, el=document) => Array.from(el.querySelectorAll(sel));
+    const storeKey = 'miska_vaje_progress_v1';
+    const progress = JSON.parse(localStorage.getItem(storeKey) || '{"left":false,"right":false,"dbl":false,"drag":false}');
+    const tabs = [$('#tab-left'), $('#tab-right'), $('#tab-dbl'), $('#tab-drag')];
+    const panels = [$('#panel-left'), $('#panel-right'), $('#panel-dbl'), $('#panel-drag')];
+
+    function setActive(i){
+      tabs.forEach((t,idx)=>{t.classList.toggle('active', idx===i); t.setAttribute('aria-selected', idx===i)});
+      panels.forEach((p,idx)=>{p.hidden = idx!==i});
+      // responsive drop-grid
+      $('#drop-grid').style.gridTemplateColumns = (innerWidth>900? 'repeat(3,1fr)':'repeat(1,1fr)');
+    }
+    tabs.forEach((t,i)=>t.addEventListener('click',()=>setActive(i)));
+
+    function saveProgress(){ localStorage.setItem(storeKey, JSON.stringify(progress)); updateProgressUI(); }
+    function updateProgressUI(){
+      const count = Object.values(progress).filter(Boolean).length;
+      $('#score').textContent = count+'/4';
+      $('#bar').style.width = Math.round(count/4*100)+'%';
+      tabs[0].classList.toggle('done', !!progress.left);
+      tabs[1].classList.toggle('done', !!progress.right);
+      tabs[2].classList.toggle('done', !!progress.dbl);
+      tabs[3].classList.toggle('done', !!progress.drag);
+    }
+
+    // Reset s tipko R – glede na odprt panel
+    window.addEventListener('keydown', (e)=>{
+      if(e.key.toLowerCase()!== 'r') return;
+      if(!$('#panel-left').hidden) leftReset();
+      else if(!$('#panel-right').hidden) rightReset();
+      else if(!$('#panel-dbl').hidden) dblReset();
+      else if(!$('#panel-drag').hidden) dragReset();
+    });
+
+    // —————— 1) LEVI KLIK ——————
+    const LEFT_TARGET = 6;
+    const leftStage = $('#left-stage');
+    const leftHitsEl = $('#left-hits');
+    const leftOk = $('#left-ok');
+    let leftHits = 0, leftItems = [], leftTimer;
+
+    function randRange(min,max){ return Math.random()*(max-min)+min }
+
+    function makeDot(id){
+      const el = document.createElement('button');
+      el.className = 'circle';
+      const isRed = Math.random()<0.45; // delež rdečih
+      el.style.background = isRed? '#ef4444' : '#9ca3af';
+      el.style.left = randRange(8,92)+'%';
+      el.style.top = randRange(12,86)+'%';
+      el.setAttribute('aria-label', isRed? 'rdeči krog' : 'sivi krog');
+      el.addEventListener('click', ()=>{
+        if(isRed){ leftHits = Math.min(LEFT_TARGET, leftHits+1); leftHitsEl.textContent = leftHits; }
+        shuffleDots();
+        checkLeft();
+      });
+      return {id, el, isRed};
+    }
+
+    function buildLeft(){
+      leftStage.innerHTML=''; leftItems=[]; leftHits=0; leftHitsEl.textContent='0'; leftOk.hidden=true;
+      for(let i=0;i<10;i++){ const d = makeDot(i); leftItems.push(d); leftStage.appendChild(d.el); }
+      clearInterval(leftTimer);
+      leftTimer = setInterval(shuffleDots, 1200);
+    }
+    function shuffleDots(){
+      leftItems.forEach(it=>{
+        const nx = Math.max(8, Math.min(92, parseFloat(it.el.style.left) + randRange(-8,8)));
+        const ny = Math.max(12, Math.min(86, parseFloat(it.el.style.top) + randRange(-8,8)));
+        it.el.style.left = nx+'%'; it.el.style.top = ny+'%';
+      })
+    }
+    function checkLeft(){ if(leftHits>=LEFT_TARGET){ leftOk.hidden=false; progress.left=true; saveProgress(); } }
+    $('#left-reset').addEventListener('click', buildLeft);
+    function leftReset(){ buildLeft(); }
+
+    // —————— 2) DESNI KLIK ——————
+    const RIGHT_TARGET = 4;
+    const rightGrid = $('#right-grid');
+    const rightFixedEl = $('#right-fixed');
+    const rightOk = $('#right-ok');
+    const ctx = $('#ctx');
+    let rightTiles=[], rightFixed=0, ctxTarget=null;
+
+    function makeTile(id){
+      const d = document.createElement('div');
+      d.className='tile'; d.style.transform='rotate(0deg)'; d.setAttribute('title','Desni klik za meni');
+      d.addEventListener('contextmenu', (e)=>{ e.preventDefault(); openMenu(e.clientX, e.clientY, id); });
+      return {id, el:d, color:'#3b82f6', rotate:0, fixed:false};
+    }
+    function buildRight(){
+      rightGrid.innerHTML=''; rightTiles=[]; rightFixed=0; rightFixedEl.textContent='0'; rightOk.hidden=true;
+      const n = RIGHT_TARGET + 3;
+      for(let i=0;i<n;i++){ const t = makeTile(i); rightTiles.push(t); rightGrid.appendChild(t.el); }
+    }
+    function openMenu(x,y,id){ ctx.style.left=x+'px'; ctx.style.top=y+'px'; ctx.hidden=false; ctxTarget=id; }
+    function closeMenu(){ ctx.hidden=true; ctxTarget=null; }
+
+    ctx.addEventListener('click', (e)=>{
+      const act = e.target.getAttribute('data-act');
+      if(!act) return;
+      const t = rightTiles.find(t=>t.id===ctxTarget); if(!t){ closeMenu(); return; }
+      if(act==='paint' && !t.fixed){ t.el.style.background='#10b981'; t.fixed=true; rightFixed=Math.min(RIGHT_TARGET, rightFixed+1); rightFixedEl.textContent=rightFixed; }
+      if(act==='rotate'){ t.rotate=(t.rotate+90)%360; t.el.style.transform='rotate('+t.rotate+'deg)'; }
+      if(act==='remove'){ t.el.remove(); rightTiles = rightTiles.filter(x=>x!==t); }
+      closeMenu(); checkRight();
+    });
+    window.addEventListener('click', (e)=>{ if(!ctx.hidden && !ctx.contains(e.target)) closeMenu(); });
+    window.addEventListener('scroll', closeMenu);
+
+    function checkRight(){ if(rightFixed>=RIGHT_TARGET){ rightOk.hidden=false; progress.right=true; saveProgress(); } }
+    $('#right-reset').addEventListener('click', buildRight);
+    function rightReset(){ buildRight(); }
+
+    // —————— 3) DVOKLIK ——————
+    const DBL_TARGET = 6;
+    const dblStage = $('#dbl-stage');
+    const dblPopEl = $('#dbl-pop');
+    const dblOk = $('#dbl-ok');
+    let bubbles=[], dblPopped=0, dblTimer;
+
+    function makeBubble(id){
+      const el=document.createElement('button'); el.className='bubble';
+      el.style.left = randRange(8,92)+'%'; el.style.top = randRange(60,88)+'%'; el.style.background='rgba(255,255,255,.55)';
+      el.addEventListener('dblclick', ()=>{ if(el.dataset.pop!=='1'){ el.dataset.pop='1'; el.textContent='💥'; el.style.background='transparent'; dblPopped=Math.min(DBL_TARGET, dblPopped+1); dblPopEl.textContent=dblPopped; checkDbl(); } });
+      return {id, el, vy: - (1.6 + Math.random()*1.4)};
+    }
+    function buildDbl(){
+      dblStage.innerHTML=''; bubbles=[]; dblPopped=0; dblPopEl.textContent='0'; dblOk.hidden=true;
+      for(let i=0;i<DBL_TARGET+5;i++){ const b = makeBubble(i); if(Math.random()<0.15){ b.el.dataset.pop='1'; b.el.textContent='💥'; b.el.style.background='transparent'; } bubbles.push(b); dblStage.appendChild(b.el); }
+      clearInterval(dblTimer); dblTimer = setInterval(()=>{ bubbles.forEach(b=>{ let y=parseFloat(b.el.style.top); y+=b.vy; if(y<6){ y = 86+Math.random()*6; b.el.dataset.pop='0'; b.el.textContent=''; b.el.style.background='rgba(255,255,255,.55)'; } b.el.style.top=y+'%'; let nx = Math.max(8, Math.min(92, parseFloat(b.el.style.left) + randRange(-1.6,1.6))); b.el.style.left=nx+'%'; }); }, 60);
+    }
+    function checkDbl(){ if(dblPopped>=DBL_TARGET){ dblOk.hidden=false; progress.dbl=true; saveProgress(); } }
+    $('#dbl-reset').addEventListener('click', buildDbl);
+    function dblReset(){ buildDbl(); }
+
+    // —————— 4) DRAG & DROP ——————
+    const items = [
+      {id:'jabolko', label:'🍎 Jabolko', type:'sadje'},
+      {id:'banana', label:'🍌 Banana', type:'sadje'},
+      {id:'korenje', label:'🥕 Korenje', type:'zelenjava'},
+      {id:'brokoli', label:'🥦 Brokoli', type:'zelenjava'},
+      {id:'kruh', label:'🍞 Kruh', type:'drugo'}
+    ];
+    const dragList = $('#drag-list');
+    const dragTotal = $('#drag-total');
+    const dragCount = $('#drag-count');
+    const dragOk = $('#drag-ok');
+    let placed = {}; // idPredmeta -> cilj
+
+    function buildDrag(){
+      dragList.innerHTML=''; placed={}; dragOk.hidden=true; dragCount.textContent='0'; dragTotal.textContent=items.length;
+      items.forEach(it=>{
+        const c=document.createElement('div'); c.className='chip'; c.textContent=it.label; c.setAttribute('draggable','true'); c.dataset.id=it.id;
+        c.addEventListener('dragstart', e=>{ c.classList.add('dragging'); e.dataTransfer.setData('text/plain', JSON.stringify(it)); });
+        c.addEventListener('dragend', ()=> c.classList.remove('dragging'));
+        dragList.appendChild(c);
+      });
+      $$('.dropzone').forEach(z=>{
+        z.addEventListener('dragover', e=>{ e.preventDefault(); });
+        z.addEventListener('drop', e=>{ e.preventDefault(); const t=e.currentTarget; const accept=t.dataset.accept; try{ const it=JSON.parse(e.dataTransfer.getData('text/plain')); placed[it.id]=accept; renderZones(); checkDrag(); }catch{}});
+      });
+      renderZones();
+    }
+    function renderZones(){
+      $$('.dropzone').forEach(z=>{ $('.zone-items', z).innerHTML=''; });
+      Object.entries(placed).forEach(([iid,tid])=>{
+        const it = items.find(x=>x.id===iid); const ok = it.type===tid; const tag=document.createElement('span'); tag.className='tag'; tag.textContent=it.label + ' ' + (ok?'✅':'❌');
+        const zone = $(`.dropzone[data-accept="${tid}"] .zone-items`); zone && zone.appendChild(tag);
+      });
+      dragCount.textContent = Object.keys(placed).length;
+    }
+    function checkDrag(){
+      const done = Object.keys(placed).length===items.length && Object.entries(placed).every(([iid,tid])=> items.find(x=>x.id===iid).type===tid);
+      if(done){ dragOk.hidden=false; progress.drag=true; saveProgress(); }
+    }
+    $('#drag-reset').addEventListener('click', buildDrag);
+    function dragReset(){ buildDrag(); }
+
+    // —————— INICIALIZACIJA ——————
+    function init(){ buildLeft(); buildRight(); buildDbl(); buildDrag(); updateProgressUI(); setActive(0); }
+    window.addEventListener('resize', ()=>{ $('#drop-grid').style.gridTemplateColumns = (innerWidth>900? 'repeat(3,1fr)':'repeat(1,1fr)'); });
+    init();
+  </script>
+</body>
+</html>
